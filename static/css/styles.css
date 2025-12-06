@@ -1047,3 +1047,93 @@ body {
 .transcript-form textarea::placeholder {
   color: var(--color-text-muted);
 }
+
+/* ==========================================================================
+   MOBILE / DESKTOP VISIBILITY
+   ========================================================================== */
+
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+  
+  .desktop-only {
+    display: none;
+  }
+  
+  /* Grotere upload zone voor touch */
+  .upload-zone {
+    min-height: 180px;
+    padding: var(--space-xl);
+  }
+  
+  .upload-icon {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .upload-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  
+  /* Betere touch targets */
+  .btn-primary.btn-large {
+    padding: var(--space-lg) var(--space-xl);
+    font-size: 1.1rem;
+    min-height: 56px;
+  }
+  
+  .select-input {
+    min-height: 50px;
+    font-size: 1rem;
+  }
+  
+  /* Tab buttons op mobiel */
+  .tabs {
+    flex-wrap: wrap;
+  }
+  
+  .tab {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: var(--space-md);
+  }
+}
+
+/* Record/Dictafoon hint */
+.record-option {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+}
+
+.record-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+/* iPhone specific adjustments */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specifieke fixes */
+  .upload-zone {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0, 135, 90, 0.1);
+  }
+  
+  input[type="file"] {
+    font-size: 16px; /* Voorkomt zoom op iOS bij focus */
+  }
+}

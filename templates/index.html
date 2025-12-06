@@ -145,9 +145,15 @@
                   <polyline points="17 8 12 3 7 8"/>
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                <p class="upload-text">Sleep een bestand hierheen of <span class="upload-link">klik om te selecteren</span></p>
-                <p class="upload-hint">MP3, WAV, M4A, MP4 (max 500MB)</p>
-                <input type="file" id="audioFile" name="file" accept="audio/*,video/*" required />
+                <p class="upload-text desktop-only">Sleep een bestand hierheen of <span class="upload-link">klik om te selecteren</span></p>
+                <p class="upload-text mobile-only">Tik om een opname te kiezen</p>
+                <p class="upload-hint">MP3, WAV, M4A (Dictafoon), MP4</p>
+                <input type="file" id="audioFile" name="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.mp4,.webm" required />
+              </div>
+              
+              <!-- Directe opname optie voor mobiel -->
+              <div class="record-option mobile-only">
+                <p class="record-hint">💡 Tip: Open eerst de Dictafoon app, maak je opname, en deel deze dan via "Bestanden" of kopieer naar iCloud Drive</p>
               </div>
               <div class="selected-file hidden" id="selectedFile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
