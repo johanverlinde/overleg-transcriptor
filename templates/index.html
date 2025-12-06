@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raadsverslag — Gemeenteraad Transcriptor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+            <span class="logo-text">Raadsverslag</span>
+          </div>
+          <p class="tagline">Automatische transcriptie & analyse van gemeenteraadsvergaderingen</p>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <!-- Input Section -->
+        <section class="input-section">
+          <div class="tabs">
+            <button class="tab active" data-tab="url">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              URL invoeren
+            </button>
+            <button class="tab" data-tab="upload">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Audio uploaden
+            </button>
+            <button class="tab" data-tab="transcript">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Transcriptie analyseren
+            </button>
+          </div>
+
+          <!-- URL Tab Content -->
+          <div class="tab-content active" id="url-tab">
+            <form id="urlForm" class="url-form">
+              <div class="input-group">
+                <label for="videoUrl">Vergaderpagina URL</label>
+                <div class="url-input-wrapper">
+                  <input 
+                    type="url" 
+                    id="videoUrl" 
+                    name="url" 
+                    placeholder="https://gemeenteraad.rotterdam.nl/Agenda/Index/..."
+                    required
+                  />
+                  <button type="button" id="previewBtn" class="btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Preview
+                  </button>
+                </div>
+                <p class="input-hint">Plak de URL van een gemeenteraad vergaderpagina (bijv. Rotterdam, Amsterdam)</p>
+              </div>
+
+              <!-- Metadata Preview -->
+              <div class="metadata-preview hidden" id="metadataPreview">
+                <div class="preview-header">
+                  <h3>Vergadering gevonden</h3>
+                  <button type="button" class="btn-icon" id="clearPreview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="preview-content">
+                  <div class="preview-item">
+                    <span class="preview-label">Commissie</span>
+                    <span class="preview-value" id="previewCommissie">-</span>
+                  </div>
+                  <div class="preview-item">
+                    <span class="preview-label">Datum</span>
+                    <span class="preview-value" id="previewDatum">-</span>
+                  </div>
+                  <div class="preview-item">
+                    <span class="preview-label">Tijd</span>
+                    <span class="preview-value" id="previewTijd">-</span>
+                  </div>
+                  <div class="preview-item">
+                    <span class="preview-label">Locatie</span>
+                    <span class="preview-value" id="previewLocatie">-</span>
+                  </div>
+                  <div class="preview-item full-width">
+                    <span class="preview-label">Video</span>
+                    <span class="preview-value" id="previewVideo">
+                      <span class="badge badge-success">Beschikbaar</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary btn-large">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Start analyse
+              </button>
+            </form>
+          </div>
+
+          <!-- Upload Tab Content -->
+          <div class="tab-content" id="upload-tab">
+            <form id="uploadForm" class="upload-form">
+              <!-- Type overleg selectie -->
+              <div class="input-group">
+                <label for="meetingType">Type overleg</label>
+                <select id="meetingType" name="meetingType" class="select-input">
+                  <option value="gemeenteraad">Gemeenteraadsvergadering</option>
+                  <option value="teamoverleg">Teamoverleg Rotterdams WeerWoord</option>
+                </select>
+                <p class="input-hint" id="meetingTypeHint">Analyse gericht op moties, amendementen en toezeggingen</p>
+              </div>
+
+              <div class="upload-zone" id="uploadZone">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p class="upload-text">Sleep een bestand hierheen of <span class="upload-link">klik om te selecteren</span></p>
+                <p class="upload-hint">MP3, WAV, M4A, MP4 (max 500MB)</p>
+                <input type="file" id="audioFile" name="file" accept="audio/*,video/*" required />
+              </div>
+              <div class="selected-file hidden" id="selectedFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span id="fileName">-</span>
+                <button type="button" id="clearFile" class="btn-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <button type="submit" class="btn-primary btn-large">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Start analyse
+              </button>
+            </form>
+          </div>
+
+          <!-- Transcript Tab Content -->
+          <div class="tab-content" id="transcript-tab">
+            <form id="transcriptForm" class="transcript-form">
+              <div class="input-group">
+                <label for="transcriptTitle">Titel vergadering</label>
+                <input 
+                  type="text" 
+                  id="transcriptTitle" 
+                  name="titel" 
+                  placeholder="Bijv. Commissie Bouwen Wonen en Buitenruimte"
+                />
+              </div>
+              <div class="input-group">
+                <label for="transcriptText">Transcriptie tekst</label>
+                <textarea 
+                  id="transcriptText" 
+                  name="transcript" 
+                  rows="12"
+                  placeholder="Plak hier de transcriptie tekst van de vergadering..."
+                  required
+                ></textarea>
+                <p class="input-hint">Plak een bestaande transcriptie om alleen de AI-analyse uit te voeren (geen nieuwe transcriptie nodig)</p>
+              </div>
+              <button type="submit" class="btn-primary btn-large">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Alleen analyseren
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section class="progress-section hidden" id="progressSection">
+          <div class="progress-card">
+            <h2>Analyse bezig...</h2>
+            <p class="progress-subtitle" id="progressSubtitle">Even geduld, dit kan enkele minuten duren bij langere vergaderingen.</p>
+            
+            <div class="progress-steps" id="progressSteps">
+              <div class="progress-step" data-step="download">
+                <div class="step-indicator">
+                  <div class="step-dot"></div>
+                  <div class="step-line"></div>
+                </div>
+                <div class="step-content">
+                  <span class="step-label">Video ophalen</span>
+                  <span class="step-status">Wachten...</span>
+                </div>
+              </div>
+              <div class="progress-step" data-step="transcribe">
+                <div class="step-indicator">
+                  <div class="step-dot"></div>
+                  <div class="step-line"></div>
+                </div>
+                <div class="step-content">
+                  <span class="step-label">Transcriberen</span>
+                  <span class="step-status">Wachten...</span>
+                </div>
+              </div>
+              <div class="progress-step" data-step="analyze">
+                <div class="step-indicator">
+                  <div class="step-dot"></div>
+                  <div class="step-line"></div>
+                </div>
+                <div class="step-content">
+                  <span class="step-label">Analyseren</span>
+                  <span class="step-status">Wachten...</span>
+                </div>
+              </div>
+              <div class="progress-step" data-step="report">
+                <div class="step-indicator">
+                  <div class="step-dot"></div>
+                </div>
+                <div class="step-content">
+                  <span class="step-label">Rapport genereren</span>
+                  <span class="step-status">Wachten...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section hidden" id="resultsSection">
+          <div class="results-header">
+            <h2>Analyse voltooid</h2>
+            <button class="btn-secondary" id="newAnalysisBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Nieuwe analyse
+            </button>
+          </div>
+
+          <!-- Download Card -->
+          <div class="download-card">
+            <div class="download-info">
+              <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              <div>
+                <h3>Word Rapport</h3>
+                <p>Volledig verslag met moties, toezeggingen en transcriptie</p>
+              </div>
+            </div>
+            <a id="downloadBtn" class="btn-primary" href="#" download>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download .docx
+            </a>
+          </div>
+
+          <!-- Summary -->
+          <div class="result-card">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Samenvatting
+            </h3>
+            <p id="summaryText" class="summary-text">-</p>
+          </div>
+
+          <!-- Key Points -->
+          <div class="result-card">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              Belangrijkste punten
+            </h3>
+            <ul id="keyPointsList" class="key-points-list">
+              <li>-</li>
+            </ul>
+          </div>
+
+          <!-- Moties -->
+          <div class="result-card" id="motiesCard">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Moties
+              <span class="count-badge" id="motiesCount">0</span>
+            </h3>
+            <div id="motiesList" class="moties-list">
+              <p class="empty-state">Geen moties gevonden in deze vergadering.</p>
+            </div>
+          </div>
+
+          <!-- Toezeggingen -->
+          <div class="result-card" id="toezeggingenCard">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+              </svg>
+              Toezeggingen
+              <span class="count-badge" id="toezeggingenCount">0</span>
+            </h3>
+            <div id="toezeggingenList" class="toezeggingen-list">
+              <p class="empty-state">Geen toezeggingen gevonden in deze vergadering.</p>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-value" id="amendementenStat">0</span>
+              <span class="stat-label">Amendementen</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="besluitenStat">0</span>
+              <span class="stat-label">Besluiten</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="sprekersStat">0</span>
+              <span class="stat-label">Sprekers</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Error Section -->
+        <section class="error-section hidden" id="errorSection">
+          <div class="error-card">
+            <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            <h2>Er ging iets mis</h2>
+            <p id="errorMessage">-</p>
+            <button class="btn-secondary" id="retryBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Probeer opnieuw
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Raadsverslag — Automatische transcriptie van gemeenteraadsvergaderingen</p>
+      </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

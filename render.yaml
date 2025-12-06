@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: overleg-transcriptor
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: GEMINI_API_KEY
+        sync: false  # Je vult dit handmatig in op Render
+      - key: TRANSCRIPTION_PROVIDER
+        value: gemini
+      - key: LLM_PROVIDER
+        value: gemini
+
