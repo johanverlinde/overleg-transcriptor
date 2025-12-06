@@ -150,7 +150,13 @@ def _get_whisper_model():
     """Laad het Whisper model (cached na eerste keer laden)."""
     global _whisper_model
     if _whisper_model is None:
-        import whisper
+        try:
+            import whisper
+        except ImportError:
+            raise RuntimeError(
+                "Whisper is niet geïnstalleerd. "
+                "Gebruik TRANSCRIPTION_PROVIDER=gemini of installeer whisper met: pip install openai-whisper"
+            )
         print(f"Whisper model '{WHISPER_MODEL}' laden (eerste keer kan even duren)...")
         _whisper_model = whisper.load_model(WHISPER_MODEL)
         print(f"Whisper model geladen!")
