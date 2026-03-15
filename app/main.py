@@ -19,14 +19,16 @@ from pydantic import BaseModel
 
 from app.services.meeting_analysis_service import (
     GemeenteraadAnalyse,
+    GesprekAnalyse,
     TeamOverlegAnalyse,
     analyse_gemeenteraad_vergadering,
+    analyse_gesprek,
     analyse_teamoverleg,
     analyse_meeting,
     clean_transcript,
     generate_summary_report,
 )
-from app.services.report_service import build_gemeenteraad_report, build_teamoverleg_report, build_word_report
+from app.services.report_service import build_gemeenteraad_report, build_gesprek_report, build_teamoverleg_report, build_word_report
 from app.services.scraper_service import scrape_vergadering_metadata
 from app.services.transcription_service import transcribe_audio
 from app.services.video_download_service import download_video_audio
@@ -65,6 +67,14 @@ class TranscriptAnalyzeRequest(BaseModel):
     """Request model voor analyse van bestaande transcriptie."""
     transcript: str
     titel: str = "Vergadering"
+
+
+class GesprekNotesRequest(BaseModel):
+    """Request model voor analyse van ruwe aantekeningen of transcriptie van een gesprek."""
+    invoer: str
+    titel: str = "Gesprek"
+    datum: str = ""
+    deelnemers: str = ""
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -455,6 +465,146 @@ async def analyze_transcript_only(request: TranscriptAnalyzeRequest) -> JSONResp
                     "amendementen_count": len(analyse.amendementen),
                     "toezeggingen_count": len(analyse.toezeggingen),
                     "besluiten_count": len(analyse.besluiten),
+                },
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/analyze-gesprek")
+async def analyze_gesprek_file(file: UploadFile = File(...)) -> JSONResponse:
+    """
+    Analyseer een gesprek vanuit een audio/video opname.
+
+    Genereert een gestructureerd verslag met:
+    - Samenvatting
+    - Besproken onderwerpen
+    - Besluiten
+    - Actielijst
+    - Vervolgstappen
+    """
+    if not file:
+        raise HTTPException(status_code=400, detail="Geen bestand ontvangen.")
+
+    _validate_upload(file)
+
+    saved_path = UPLOAD_DIR / f"{uuid.uuid4()}_{file.filename}"
+
+    try:
+        with saved_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    finally:
+        file.file.close()
+
+    try:
+        print("Stap 1/3: Transcriberen...")
+        transcript = transcribe_audio(saved_path)
+        cleaned_transcript = clean_transcript(transcript)
+
+        print("Stap 2/3: Analyseren met AI (gesprek)...")
+        metadata_dict = {
+            "titel": file.filename or "Gesprek",
+            "source_type": "upload",
+        }
+
+        analyse = analyse_gesprek(cleaned_transcript, metadata=metadata_dict)
+
+        print("Stap 3/3: Rapport genereren...")
+        report_id = str(uuid.uuid4())
+        report_path = REPORT_DIR / f"gesprek_{report_id}.docx"
+
+        build_gesprek_report(
+            report_path,
+            analyse,
+            metadata=metadata_dict,
+            transcript=cleaned_transcript,
+        )
+
+        REPORT_REGISTRY[report_id] = report_path
+
+        return JSONResponse(
+            {
+                "status": "success",
+                "reportId": report_id,
+                "downloadUrl": f"/api/report/{report_id}",
+                "analyse": {
+                    "titel": analyse.titel,
+                    "type_gesprek": analyse.type_gesprek,
+                    "samenvatting": analyse.samenvatting,
+                    "aanwezigen": analyse.aanwezigen,
+                    "acties": [
+                        {"actie": a.actie, "wie": a.wie, "deadline": a.deadline}
+                        for a in analyse.acties
+                    ],
+                    "besluiten_count": len(analyse.besluiten),
+                    "onderwerpen_count": len(analyse.onderwerpen),
+                },
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        if saved_path.exists():
+            saved_path.unlink()
+
+
+@app.post("/api/analyze-gesprek-aantekeningen")
+async def analyze_gesprek_notes(request: GesprekNotesRequest) -> JSONResponse:
+    """
+    Analyseer een gesprek vanuit ruwe aantekeningen of een bestaande transcriptie.
+
+    Accepteert platte tekst: bullet points, steno, steekwoorden of uitgeschreven tekst.
+    """
+    if not request.invoer or len(request.invoer.strip()) < 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Invoer is te kort. Minimaal 20 karakters vereist.",
+        )
+
+    try:
+        metadata_dict: dict = {"titel": request.titel, "source_type": "notes"}
+        if request.datum:
+            metadata_dict["datum"] = request.datum
+        if request.deelnemers:
+            metadata_dict["deelnemers"] = request.deelnemers
+
+        print("Analyseren met AI (aantekeningen gesprek)...")
+        analyse = analyse_gesprek(request.invoer, metadata=metadata_dict)
+
+        report_id = str(uuid.uuid4())
+        report_path = REPORT_DIR / f"gesprek_{report_id}.docx"
+
+        build_gesprek_report(
+            report_path,
+            analyse,
+            metadata=metadata_dict,
+            transcript=request.invoer,
+        )
+
+        REPORT_REGISTRY[report_id] = report_path
+
+        return JSONResponse(
+            {
+                "status": "success",
+                "reportId": report_id,
+                "downloadUrl": f"/api/report/{report_id}",
+                "analyse": {
+                    "titel": analyse.titel,
+                    "type_gesprek": analyse.type_gesprek,
+                    "samenvatting": analyse.samenvatting,
+                    "aanwezigen": analyse.aanwezigen,
+                    "acties": [
+                        {"actie": a.actie, "wie": a.wie, "deadline": a.deadline}
+                        for a in analyse.acties
+                    ],
+                    "besluiten": analyse.besluiten,
+                    "vervolgstappen": analyse.vervolgstappen,
+                    "onderwerpen_count": len(analyse.onderwerpen),
                 },
             }
         )

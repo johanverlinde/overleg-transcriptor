@@ -144,6 +144,38 @@ class TeamOverlegAnalyse:
     opmerkingen: str = ""
 
 
+@dataclass
+class GesprekOnderwerpItem:
+    """Een besproken onderwerp in een algemeen gesprek."""
+    titel: str = ""
+    samenvatting: str = ""
+    besluit: str = ""
+
+
+@dataclass
+class GesprekActie:
+    """Een actie-afspraak uit een algemeen gesprek."""
+    actie: str = ""
+    wie: str = ""
+    deadline: str = ""
+
+
+@dataclass
+class GesprekAnalyse:
+    """Analyse van een algemeen gesprek of overleg."""
+    titel: str = ""
+    datum: str = ""
+    type_gesprek: str = ""
+    aanwezigen: List[str] = field(default_factory=list)
+    doel: str = ""
+    samenvatting: str = ""
+    onderwerpen: List[GesprekOnderwerpItem] = field(default_factory=list)
+    besluiten: List[str] = field(default_factory=list)
+    acties: List[GesprekActie] = field(default_factory=list)
+    vervolgstappen: List[str] = field(default_factory=list)
+    opmerkingen: str = ""
+
+
 SYSTEM_PROMPT_GEMEENTERAAD = """Je bent een expert in het analyseren van Nederlandse gemeenteraadsvergaderingen. 
 Je krijgt een transcriptie van een vergadering en moet een gestructureerde analyse maken.
 
@@ -306,6 +338,73 @@ Let extra op:
 - Als geen deadline is genoemd, laat het veld leeg (niet invullen met "niet genoemd")
 - Prioriteit inschatten op basis van urgentie in de discussie
 - Namen van teamleden correct overnemen
+"""
+
+
+SYSTEM_PROMPT_GESPREK = """Je bent een professionele notulist die ruwe aantekeningen of gesprektranscripties omzet naar een helder, gestructureerd verslag.
+
+De invoer kan twee vormen hebben:
+- RUWE AANTEKENINGEN: steno, bullet points, afkortingen, steekwoorden — schrijf dit uit tot volledige zinnen
+- TRANSCRIPTIE: uitgeschreven spraak (inclusief stopwoorden, herhalingen) — filter dit tot de kern
+
+Analyseer de inhoud en extraheer de volgende elementen:
+
+1. IDENTIFICATIE: Bepaal het type gesprek (bijv. klantgesprek, werkoverleg, 1-op-1, projectoverleg, intakegesprek, evaluatie, etc.) op basis van de inhoud.
+
+2. AANWEZIGEN: Alle deelnemers die genoemd worden, inclusief hun rol of functie indien vermeld.
+
+3. DOEL VAN HET GESPREK: Wat was de aanleiding of het hoofddoel?
+
+4. SAMENVATTING: Een beknopte samenvatting (max 200 woorden) van het gehele gesprek. Schrijf in de derde persoon, zakelijke stijl, voltooid verleden tijd.
+
+5. BESPROKEN ONDERWERPEN: Voor elk onderwerp:
+   - Een duidelijke titel
+   - Een korte samenvatting van wat er over gezegd is
+   - Eventueel genomen besluit of conclusie
+
+6. BESLUITEN: Formele besluiten of afspraken die expliciet zijn gemaakt.
+
+7. ACTIELIJST: Concrete acties die zijn afgesproken:
+   - Wat moet er gebeuren (begin met een werkwoord: "Opstellen", "Sturen", "Regelen", etc.)
+   - Wie is verantwoordelijk
+   - Uiterlijk wanneer (deadline, indien genoemd)
+
+8. VERVOLGSTAPPEN: Wat zijn de volgende stappen of wanneer is het volgende contact?
+
+Schrijfstijl voor het verslag:
+- Zakelijk en neutraal
+- Derde persoon ("De heer X gaf aan...", "Er werd besloten...", "Partijen kwamen overeen...")
+- Geen directe citaten tenzij ze essentieel zijn
+- Geen interpretaties — alleen wat daadwerkelijk gezegd of besloten is
+
+Geef je antwoord ALLEEN als valid JSON in het volgende formaat (geen andere tekst):
+{
+    "titel": "Verslag [type gesprek] [datum indien bekend]",
+    "datum": "...",
+    "type_gesprek": "...",
+    "aanwezigen": ["Naam (rol)", "Naam (rol)"],
+    "doel": "...",
+    "samenvatting": "...",
+    "onderwerpen": [
+        {
+            "titel": "...",
+            "samenvatting": "...",
+            "besluit": "..."
+        }
+    ],
+    "besluiten": ["besluit 1", "besluit 2"],
+    "acties": [
+        {
+            "actie": "...",
+            "wie": "...",
+            "deadline": "..."
+        }
+    ],
+    "vervolgstappen": ["stap 1", "stap 2"],
+    "opmerkingen": "..."
+}
+
+Gebruik lege strings of lege arrays als iets niet in de invoer voorkomt. Verzin niets.
 """
 
 
@@ -629,6 +728,87 @@ def analyse_teamoverleg(
         besluiten=data.get("besluiten", []),
         aandachtspunten=data.get("aandachtspunten", []),
         volgende_overleg=data.get("volgende_overleg", ""),
+        opmerkingen=data.get("opmerkingen", ""),
+    )
+
+
+def analyse_gesprek(
+    invoer: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> GesprekAnalyse:
+    """
+    Analyseer een algemeen gesprek op basis van ruwe aantekeningen of transcriptie.
+
+    Ondersteunt beide invoervormen:
+    - Ruwe aantekeningen (steno, bullets, steekwoorden)
+    - Audiotrancriptie (uitgeschreven spraak)
+    """
+    context = ""
+    if metadata:
+        context_parts = []
+        if metadata.get("datum"):
+            context_parts.append(f"Datum: {metadata['datum']}")
+        if metadata.get("titel"):
+            context_parts.append(f"Titel: {metadata['titel']}")
+        if metadata.get("deelnemers"):
+            context_parts.append(f"Deelnemers: {metadata['deelnemers']}")
+        if context_parts:
+            context = "CONTEXT:\n" + "\n".join(context_parts) + "\n\n"
+
+    max_chars = 100000
+    if len(invoer) > max_chars:
+        invoer = invoer[:max_chars] + "\n\n[INVOER INGEKORT]"
+
+    user_message = f"{context}INVOER:\n\n{invoer}"
+
+    try:
+        result_text = _call_llm(user_message, SYSTEM_PROMPT_GESPREK)
+    except Exception as e:
+        print(f"LLM fout: {e}")
+        return GesprekAnalyse(
+            samenvatting="Analyse kon niet worden voltooid.",
+            opmerkingen=str(e),
+        )
+
+    data = _extract_json_from_response(result_text)
+
+    if not data:
+        return GesprekAnalyse(
+            samenvatting="Analyse kon niet worden geparsed.",
+            opmerkingen=f"Response: {result_text[:500]}...",
+        )
+
+    onderwerpen = [
+        GesprekOnderwerpItem(
+            titel=o.get("titel", ""),
+            samenvatting=o.get("samenvatting", ""),
+            besluit=o.get("besluit", ""),
+        )
+        for o in data.get("onderwerpen", []) if isinstance(o, dict)
+    ]
+
+    acties = [
+        GesprekActie(
+            actie=a.get("actie", ""),
+            wie=a.get("wie", ""),
+            deadline=a.get("deadline", ""),
+        )
+        for a in data.get("acties", []) if isinstance(a, dict)
+    ]
+
+    print("Gesprekanalyse voltooid!")
+
+    return GesprekAnalyse(
+        titel=data.get("titel", "Verslag gesprek"),
+        datum=data.get("datum", ""),
+        type_gesprek=data.get("type_gesprek", ""),
+        aanwezigen=data.get("aanwezigen", []),
+        doel=data.get("doel", ""),
+        samenvatting=data.get("samenvatting", ""),
+        onderwerpen=onderwerpen,
+        besluiten=data.get("besluiten", []),
+        acties=acties,
+        vervolgstappen=data.get("vervolgstappen", []),
         opmerkingen=data.get("opmerkingen", ""),
     )
 

@@ -10,7 +10,7 @@ from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 if TYPE_CHECKING:
-    from app.services.meeting_analysis_service import GemeenteraadAnalyse, TeamOverlegAnalyse
+    from app.services.meeting_analysis_service import GemeenteraadAnalyse, GesprekAnalyse, TeamOverlegAnalyse
 
 
 def _add_heading(document: Document, text: str, level: int) -> None:
@@ -510,5 +510,156 @@ def build_teamoverleg_report(
             if para.strip():
                 _add_paragraph(document, para.strip())
     
+    document.save(output_path)
+    return output_path
+
+
+def build_gesprek_report(
+    output_path: Path,
+    analyse: "GesprekAnalyse",
+    metadata: Optional[Dict[str, str]] = None,
+    transcript: Optional[str] = None,
+) -> Path:
+    """
+    Genereer een Word-rapport voor een algemeen gesprek.
+
+    Werkt voor elk type gesprek: klantgesprek, werkoverleg, 1-op-1, intakegesprek, etc.
+    """
+    document = Document()
+    metadata = metadata or {}
+
+    # Titel
+    title = document.add_heading(level=0)
+    title_run = title.add_run(analyse.titel or "Verslag gesprek")
+    title_run.font.size = Pt(18)
+    title_run.font.name = "Calibri"
+
+    if analyse.type_gesprek:
+        subtitle = document.add_paragraph()
+        subtitle_run = subtitle.add_run(analyse.type_gesprek)
+        subtitle_run.font.size = Pt(13)
+        subtitle_run.font.italic = True
+
+    auto_label = document.add_paragraph()
+    auto_label.add_run("Dit verslag is automatisch gegenereerd op basis van de aangeleverde aantekeningen of opname.").italic = True
+
+    document.add_paragraph()
+
+    # =========================================================================
+    # 1. BASISGEGEVENS
+    # =========================================================================
+    _add_heading(document, "1. Basisgegevens", level=1)
+
+    rows = []
+    if analyse.datum or metadata.get("datum"):
+        rows.append(("Datum", analyse.datum or metadata.get("datum", "")))
+    if analyse.aanwezigen:
+        rows.append(("Aanwezigen", ", ".join(analyse.aanwezigen)))
+    if analyse.doel:
+        rows.append(("Doel", analyse.doel))
+
+    if rows:
+        table = document.add_table(rows=len(rows), cols=2)
+        table.style = "Table Grid"
+        for i, (label, value) in enumerate(rows):
+            table.rows[i].cells[0].text = label
+            table.rows[i].cells[1].text = value
+        document.add_paragraph()
+    else:
+        _add_paragraph(document, "Geen basisgegevens beschikbaar.")
+
+    # =========================================================================
+    # 2. SAMENVATTING
+    # =========================================================================
+    _add_heading(document, "2. Samenvatting", level=1)
+    _add_paragraph(document, analyse.samenvatting or "Geen samenvatting beschikbaar.")
+
+    # =========================================================================
+    # 3. BESPROKEN ONDERWERPEN
+    # =========================================================================
+    _add_heading(document, "3. Besproken onderwerpen", level=1)
+
+    if analyse.onderwerpen:
+        for i, onderwerp in enumerate(analyse.onderwerpen, 1):
+            _add_heading(document, f"3.{i} {onderwerp.titel or 'Onderwerp'}", level=2)
+
+            if onderwerp.samenvatting:
+                _add_paragraph(document, onderwerp.samenvatting)
+
+            if onderwerp.besluit:
+                besluit_para = document.add_paragraph()
+                besluit_para.add_run("Besluit: ").bold = True
+                besluit_para.add_run(onderwerp.besluit)
+
+            document.add_paragraph()
+    else:
+        _add_paragraph(document, "Geen gedetailleerde onderwerpen beschikbaar.")
+
+    # =========================================================================
+    # 4. BESLUITEN
+    # =========================================================================
+    if analyse.besluiten:
+        _add_heading(document, "4. Besluiten", level=1)
+        for besluit in analyse.besluiten:
+            document.add_paragraph(besluit, style="List Bullet")
+
+    # =========================================================================
+    # 5. ACTIELIJST
+    # =========================================================================
+    _add_heading(document, "5. Actielijst", level=1)
+
+    if analyse.acties:
+        table = document.add_table(rows=1, cols=3)
+        table.style = "Table Grid"
+
+        headers = ["Actie", "Wie", "Deadline"]
+        for i, header in enumerate(headers):
+            cell = table.rows[0].cells[i]
+            cell.text = header
+            cell.paragraphs[0].runs[0].bold = True
+
+        for actie in analyse.acties:
+            row = table.add_row()
+            row.cells[0].text = actie.actie or "-"
+            row.cells[1].text = actie.wie or "-"
+            row.cells[2].text = actie.deadline or "-"
+
+        document.add_paragraph()
+    else:
+        _add_paragraph(document, "Er zijn geen acties afgesproken.")
+
+    # =========================================================================
+    # 6. VERVOLGSTAPPEN
+    # =========================================================================
+    if analyse.vervolgstappen:
+        _add_heading(document, "6. Vervolgstappen", level=1)
+        for stap in analyse.vervolgstappen:
+            document.add_paragraph(stap, style="List Bullet")
+
+    # =========================================================================
+    # 7. OPMERKINGEN
+    # =========================================================================
+    if analyse.opmerkingen:
+        _add_heading(document, "7. Opmerkingen", level=1)
+        _add_paragraph(document, analyse.opmerkingen)
+
+    # =========================================================================
+    # BIJLAGE: ORIGINELE INVOER
+    # =========================================================================
+    if transcript:
+        document.add_page_break()
+        _add_heading(document, "Bijlage: Originele invoer", level=1)
+
+        warning = document.add_paragraph()
+        warning.add_run(
+            "Onderstaande tekst is de originele invoer (aantekeningen of transcriptie) waarop dit verslag is gebaseerd."
+        ).italic = True
+
+        document.add_paragraph()
+
+        for para in transcript.split("\n\n"):
+            if para.strip():
+                _add_paragraph(document, para.strip())
+
     document.save(output_path)
     return output_path
